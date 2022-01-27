@@ -58,7 +58,7 @@ SELECT
         global $post;
 
 
-
+        ob_start();
         ?>
 
 
@@ -90,7 +90,14 @@ SELECT
                 <input type="checkbox" id="scales" name="gestellt" <?php echo  ($_GET['gestellt'] == "on" ? "checked" : "")?>>
             </div>
             <div>
-                <button type="submit" class="btn btn-primary">Submit</button>
+                <p>&nbsp;</p>
+            </div>
+
+            <div>
+                <button type="submit" class="btn btn-primary">Fragen anzeigen</button>
+            </div>
+            <div>
+                <p>&nbsp;</p>
             </div>
         </div>
     </form>
@@ -124,21 +131,27 @@ SELECT
             echo "<h2>nicht gestellte Fragen</h2>";
             $usedQuestions = array_unique($usedQuestions, SORT_NUMERIC);
 
-            $sqlQuestionsTable = "SELECT * FROM {$questions_table} where id not IN (" . implode(',', array_map('intval', $usedQuestions)) . ")";
+            //select q.id, q.category_id, q.question, c.title cat_title from EYTXGc_aysquiz_questions q inner join EYTXGc_aysquiz_categories c on q.category_id = c.id where q.category_id = 3;
+
+            $idsSQL = implode(',', array_map('intval', $usedQuestions));
+            //$sqlQuestionsTable = "SELECT * FROM {$questions_table} where id not IN (" . implode(',', array_map('intval', $usedQuestions)) . ")";
+
+            //select q.id, q.category_id, q.question, c.title cat_title from {$questions_table} q inner join {$question_categories_table} c on q.category_id = c.id where q.category_id = 3 and id not IN ('{$idsSQL}');
+            $sqlQuestionsTable = "select q.id, q.category_id, q.question, c.title cat_title from {$questions_table} q inner join {$question_categories_table} c on q.category_id = c.id where q.category_id = 1 and q.id not IN ({$idsSQL})";
             $resQuestionsTable = $wpdb->get_results( $sqlQuestionsTable );
 
-            //echo '<pre>'; print_r ( $resQuestionsTable);echo '</pre>';
+            echo '<pre>'; print_r ( $sqlQuestionsTable);echo '</pre>';
 
             echo '<table>';
             echo '<tr>
                     <th>ID</th>
-                    <th>Frage_Kategorie</th>
+                    <th>Frage-Kategorie</th>
                     <th>Frage</th>
                   </tr>';
             foreach($resQuestionsTable as $QuestionsTableRow) {
                 echo "<tr>
                         <td>{$QuestionsTableRow->id}</td>
-                        <td>{$QuestionsTableRow->category_id}</td>
+                        <td>{$QuestionsTableRow->cat_title}</td>
                         <td>{$QuestionsTableRow->question}</td>
                       </tr>";
             }
@@ -157,7 +170,10 @@ SELECT
         <?php
 
     }
-return true;
+
+    $content = ob_get_contents();
+    ob_end_clean();
+    return $content;
 }
 
 //Hooks
