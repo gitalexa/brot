@@ -112,50 +112,33 @@ SELECT
             $key = array_search($quizkategorie, array_column($resQuizCategoriesTable, 'id'));
             echo "<h1>Quizkategorie:" . $resQuizCategoriesTable[$key]->title . "</h1>";
 
-            //holen alle Quizze aus der kategorie
+
+            //zeige gestellte Fragen: = true
+            //-> zeige quize (wie jetzt)
+            //->zeige Tabelle fragen pro quiz (dann Fragenkategorien beachten)
+            //-> nicht getsellte kommen dann nicht
 
             $sqlQuizTable = "SELECT * FROM {$quizes_table} where quiz_category_id={$quizkategorie}";
             $resQuizTable = $wpdb->get_results( $sqlQuizTable );
 
             $usedQuestions = [];
             foreach($resQuizTable as $QuizTableRow) {
-                echo "<h2>Quiz: " . $QuizTableRow->title . "</h2>";
-                echo "<h3>gestellte Fragen: " . $QuizTableRow->question_ids . "</h3>";
-                echo "<h3>" . $QuizTableRow->question_ids . "</h3>";
-
-                //echo '<pre>'; print_r ( explode(",", $QuizTableRow->question_ids));echo '</pre>';
-
+                if($gestellt) {
+                    echo "<div class = 'hpx_quizresult'>";
+                    echo "<h2>Quiz: " . $QuizTableRow->title . "</h2>";
+                    echo getQuestionstable($QuizTableRow->question_ids, $fragenkategorie, 'in');
+                }
                 $usedQuestions = array_merge($usedQuestions, explode(",", $QuizTableRow->question_ids));
             }
 
-            echo "<h2>nicht gestellte Fragen</h2>";
-            $usedQuestions = array_unique($usedQuestions, SORT_NUMERIC);
+            if(!$gestellt) {
+                echo "<h2>nicht gestellte Fragen</h2>";
+                $usedQuestions = array_unique($usedQuestions, SORT_NUMERIC);
+                $idsSQL = implode(',', array_map('intval', $usedQuestions));
 
-            //select q.id, q.category_id, q.question, c.title cat_title from EYTXGc_aysquiz_questions q inner join EYTXGc_aysquiz_categories c on q.category_id = c.id where q.category_id = 3;
-
-            $idsSQL = implode(',', array_map('intval', $usedQuestions));
-            //$sqlQuestionsTable = "SELECT * FROM {$questions_table} where id not IN (" . implode(',', array_map('intval', $usedQuestions)) . ")";
-
-            //select q.id, q.category_id, q.question, c.title cat_title from {$questions_table} q inner join {$question_categories_table} c on q.category_id = c.id where q.category_id = 3 and id not IN ('{$idsSQL}');
-            $sqlQuestionsTable = "select q.id, q.category_id, q.question, c.title cat_title from {$questions_table} q inner join {$question_categories_table} c on q.category_id = c.id where q.category_id = 1 and q.id not IN ({$idsSQL})";
-            $resQuestionsTable = $wpdb->get_results( $sqlQuestionsTable );
-
-            echo '<pre>'; print_r ( $sqlQuestionsTable);echo '</pre>';
-
-            echo '<table>';
-            echo '<tr>
-                    <th>ID</th>
-                    <th>Frage-Kategorie</th>
-                    <th>Frage</th>
-                  </tr>';
-            foreach($resQuestionsTable as $QuestionsTableRow) {
-                echo "<tr>
-                        <td>{$QuestionsTableRow->id}</td>
-                        <td>{$QuestionsTableRow->cat_title}</td>
-                        <td>{$QuestionsTableRow->question}</td>
-                      </tr>";
+                echo getQuestionstable($idsSQL, $fragenkategorie, 'not in');
             }
-            echo '</table>';
+
         }
 	}
     else {
@@ -178,6 +161,40 @@ SELECT
 
 //Hooks
 add_shortcode( 'hpx_quizmaker_show_form', 'quizmaker_show_form' );
+
+
+function getQuestionstable( $usedQuestions, $questionCategory, $in){
+    global $wpdb;
+
+    $questions_table            =   $wpdb->prefix . 'aysquiz_questions';
+    $question_categories_table  =   $wpdb->prefix . 'aysquiz_categories';
+
+    $sqlQuestionsTable = "select q.id, q.category_id, q.question, c.title cat_title from {$questions_table} q inner join {$question_categories_table} c on q.category_id = c.id where q.id {$in} ({$usedQuestions})";
+
+    if ($questionCategory > -1 ){
+        $sqlQuestionsTable .= " and q.category_id = {$questionCategory}";
+    }
+
+    $resQuestionsTable = $wpdb->get_results( $sqlQuestionsTable );
+
+    $result = "<table>";
+    $result .= "<tr>
+                    <th>ID</th>
+                    <th>Frage-Kategorie</th>
+                    <th>Frage</th>
+                  </tr>";
+    foreach($resQuestionsTable as $QuestionsTableRow) {
+        $result .= "<tr>
+                        <td>{$QuestionsTableRow->id}</td>
+                        <td>{$QuestionsTableRow->cat_title}</td>
+                        <td>{$QuestionsTableRow->question}</td>
+                      </tr>";
+    }
+    $result .= "</table>";
+
+    return $result;
+
+}
 
 
 function post_admin_hpx_enhancement(){
