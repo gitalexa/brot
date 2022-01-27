@@ -102,8 +102,6 @@ SELECT
         </div>
     </form>
     <?php
-
-
         if ($_GET['quizkategorie'] !== null && $_GET['fragenkategorie'] !== null){
             $quizkategorie = $_GET['quizkategorie'];
             $fragenkategorie = $_GET['fragenkategorie'];
@@ -111,12 +109,6 @@ SELECT
 
             $key = array_search($quizkategorie, array_column($resQuizCategoriesTable, 'id'));
             echo "<h1>Quizkategorie:" . $resQuizCategoriesTable[$key]->title . "</h1>";
-
-
-            //zeige gestellte Fragen: = true
-            //-> zeige quize (wie jetzt)
-            //->zeige Tabelle fragen pro quiz (dann Fragenkategorien beachten)
-            //-> nicht getsellte kommen dann nicht
 
             $sqlQuizTable = "SELECT * FROM {$quizes_table} where quiz_category_id={$quizkategorie}";
             $resQuizTable = $wpdb->get_results( $sqlQuizTable );
