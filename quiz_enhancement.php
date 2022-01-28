@@ -1,6 +1,10 @@
 <?php
 
-function quizmaker_show_form(){
+function
+
+
+
+quizmaker_show_form(){
 
     $user = wp_get_current_user();
     $allowed_roles = array( 'administrator' ); //    $allowed_roles = array( 'editor', 'administrator', 'author' );
@@ -21,8 +25,8 @@ function quizmaker_show_form(){
         $themes_table               =   $wpdb->prefix . 'aysquiz_themes';
         $settings_table             =   $wpdb->prefix . 'aysquiz_settings';
 
-        $sqlQuizCategoriesTable = "SELECT id, title FROM {$quiz_categories_table}";
-        $sqlQuestCategoriesTable = "SELECT id, title FROM {$question_categories_table}";
+        $sqlQuizCategoriesTable = "SELECT id, title FROM {$quiz_categories_table} order by title";
+        $sqlQuestCategoriesTable = "SELECT id, title FROM {$question_categories_table} order by title";
         $resQuizCategoriesTable = $wpdb->get_results( $sqlQuizCategoriesTable );
         $resQuestCategoriesTable = $wpdb->get_results( $sqlQuestCategoriesTable );
 
@@ -86,6 +90,13 @@ SELECT
                 </select>
             </div>
             <div>
+                <label for="sortierung">Sortiere Fragen nach:</label>
+                <select name="sortierung">
+                    <option value="1" <?php echo  ($_GET['order'] == 1 ? 'selected="selected"' : "") ?>>ID</option>
+                    <option value="2" <?php echo  ($_GET['order'] == 2 ? 'selected="selected"' : "") ?>>Kategorie</option>
+                </select>
+            </div>
+            <div>
                 <label for="gestellt">Zeige gestellte Fragen:</label>
                 <input type="checkbox" id="scales" name="gestellt" <?php echo  ($_GET['gestellt'] == "on" ? "checked" : "")?>>
             </div>
@@ -102,13 +113,15 @@ SELECT
         </div>
     </form>
     <?php
+
         if ($_GET['quizkategorie'] !== null && $_GET['fragenkategorie'] !== null){
             $quizkategorie = $_GET['quizkategorie'];
             $fragenkategorie = $_GET['fragenkategorie'];
             $gestellt = isset($_GET['gestellt'] );
+            $order = $_GET['order'] ;
 
             $key = array_search($quizkategorie, array_column($resQuizCategoriesTable, 'id'));
-            echo "<h1>Quizkategorie:" . $resQuizCategoriesTable[$key]->title . "</h1>";
+            echo "<h1>Quizkategorie: " . $resQuizCategoriesTable[$key]->title . "</h1>";
 
             $sqlQuizTable = "SELECT * FROM {$quizes_table} where quiz_category_id={$quizkategorie}";
             $resQuizTable = $wpdb->get_results( $sqlQuizTable );
@@ -118,7 +131,7 @@ SELECT
                 if($gestellt) {
                     echo "<div class = 'hpx_quizresult'>";
                     echo "<h2>Quiz: " . $QuizTableRow->title . "</h2>";
-                    echo getQuestionstable($QuizTableRow->question_ids, $fragenkategorie, 'in');
+                    echo getQuestionstable($QuizTableRow->question_ids, $fragenkategorie, 'in', $order);
                 }
                 $usedQuestions = array_merge($usedQuestions, explode(",", $QuizTableRow->question_ids));
             }
@@ -128,7 +141,7 @@ SELECT
                 $usedQuestions = array_unique($usedQuestions, SORT_NUMERIC);
                 $idsSQL = implode(',', array_map('intval', $usedQuestions));
 
-                echo getQuestionstable($idsSQL, $fragenkategorie, 'not in');
+                echo getQuestionstable($idsSQL, $fragenkategorie, 'not in', $order);
             }
 
         }
@@ -155,21 +168,28 @@ SELECT
 add_shortcode( 'hpx_quizmaker_show_form', 'quizmaker_show_form' );
 
 
-function getQuestionstable( $usedQuestions, $questionCategory, $in){
+function getQuestionstable( $usedQuestions, $questionCategory, $in, $order){
     global $wpdb;
 
     $questions_table            =   $wpdb->prefix . 'aysquiz_questions';
     $question_categories_table  =   $wpdb->prefix . 'aysquiz_categories';
-
+    //
     $sqlQuestionsTable = "select q.id, q.category_id, q.question, c.title cat_title from {$questions_table} q inner join {$question_categories_table} c on q.category_id = c.id where q.id {$in} ({$usedQuestions})";
 
     if ($questionCategory > -1 ){
         $sqlQuestionsTable .= " and q.category_id = {$questionCategory}";
     }
 
-    $resQuestionsTable = $wpdb->get_results( $sqlQuestionsTable );
+    if ($order == 2  ){
+        $sqlQuestionsTable .= " order by c.title, q.id";
+    } else {
+        $sqlQuestionsTable .= " order by q.id";
+    }
 
-    $result = "<table>";
+    $resQuestionsTable = $wpdb->get_results( $sqlQuestionsTable );
+    $result = "<h3>Anzahl: " . count($resQuestionsTable) . "</h3>";
+
+    $result .= "<table>";
     $result .= "<tr>
                     <th>ID</th>
                     <th>Frage-Kategorie</th>
@@ -224,12 +244,16 @@ function custom_redirect($response ) {
         if( isset( $response['gestellt'] )){
             $gestellt = $response['gestellt'];
         }
+        if( isset( $response['sortierung'] )){
+            $order = $response['sortierung'];
+        }
 
 
         $url = esc_url_raw( add_query_arg( array(
                                             'quizkategorie' => $qkat,
                                             'fragenkategorie' => $questkat,
                                             'gestellt' => $gestellt,
+                                            'order' => $order
                                                 ),
           sprintf('%s://%s%s', $refUrl['scheme'], $refUrl['host'], $refUrl['path'])
         ) ) ;
