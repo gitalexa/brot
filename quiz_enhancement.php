@@ -143,7 +143,6 @@ SELECT
 
                 echo getQuestionstable($idsSQL, $fragenkategorie, 'not in', $order);
             }
-
         }
 	}
     else {
